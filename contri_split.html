@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 	<head>
-		<title> Contri split </title>
+		<title> Contri Split </title>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width; initial-scale=1">
 		
@@ -10,9 +10,8 @@
 				background: #000000;
 				color: #ffffff;
 			}
-			#person_list {
+			#person_list, #pay_table {
 				border: 1px solid #ffffff;
-				spacing: 5px;
 			}
 			#person_list th, #person_list td {
 				border: 1px solid #ffffff;
@@ -23,7 +22,6 @@
 				border-width: 0 0 1px 0;
 				border-color: #ffffff;
 				color: #ffffff;
-				display: inline;
 				width: 8em;
 			}
 			.single_expense_container {
@@ -42,11 +40,23 @@
 			.bad {
 				color: #ff7f7f;
 			}
+
+			#add_person_container {
+				border: 1px solid #ffffff;
+				display: inline-block;
+				padding: 5px;
+			}
+
+			#pay_table td {
+				padding: 0 1em;
+			}
 		</style>
 	</head>
 	<body onload="addPerson()">
+		<h1> Contri Split </h1>
 		<div id="container">
-			<table id="person_list" cellspacing='5'>
+			<br><br>
+			<table id="person_list" cellspacing="0">
 				<tr id="heading">
 					<th> </th>
 					<th> No. </th>
@@ -56,17 +66,16 @@
 					<th> <span class="bad">To give (-)</span> / <span class="good">To get (+)</span></th>
 				</tr>
 			</table>
-			<button id="add_person" class="add_remove_button" onclick="addPerson()"> &plus; </button>
+			<div id="add_person_container">
+				<button id="add_person" class="add_remove_button" onclick="addPerson()"> &plus; </button>
+			</div>
+			<br><br>
+			Who pays who:
+			<label>(<input type="checkbox" name="pay_split_algorithm" id="split_algorithm" onchange="reeval()" /> Show a different split )</label>
+			<table id="pay_table"></table>
 		</div>
 
 		<script type="text/javascript">
-			var personObj = {
-				name: "",
-				spent: [],
-				totalspent: 0,
-				toget: 0
-			};
-			var personList = [];
 			function addNewExpense (buttonElement, ignoreFocus) {
 				var spentcontainer = buttonElement.parentElement.firstElementChild;
 				var expense = document.createElement ("div");
@@ -136,6 +145,7 @@
 				var nameInput = document.createElement ("input");
 				nameInput.setAttribute ("type", "text");
 				nameInput.setAttribute ("class", "box_input name_input");
+				nameInput.setAttribute ("onchange", "reeval()");
 				nameCell.appendChild(nameInput);
 				newRow.appendChild(nameCell);
 
@@ -151,6 +161,58 @@
 
 				personList.appendChild(newRow);
 				reeval();
+			}
+			function buildPayTable(matrix, names) {
+				var paytable = document.getElementById("pay_table");
+				paytable.innerHTML = "";
+
+				for (var i = 0; i < names.length; ++i) {
+					for (var j = 0; j < names.length; ++j) {
+						if (matrix[i][j] === 0)
+							continue;
+
+						var newRow = document.createElement("tr");
+						var nameCell = document.createElement("td");
+						nameCell.innerHTML = names[i] + " to " + names[j];
+						newRow.appendChild(nameCell);
+
+						var amount = document.createElement("td");
+						amount.innerHTML = round2(matrix[i][j]);
+						newRow.appendChild(amount);
+
+						paytable.appendChild (newRow);
+					}
+				}
+			}
+			function getHiLo(arr) {
+				var l = 0, h = 0, no_gainer = true, no_loser = true;
+				for (var i = 0; i < arr.length; ++i) {
+					if (arr[i] < 0) {
+						no_loser = false;
+						if (arr[i] < arr[l]) l = i;
+					}
+					if (arr[i] > 0) {
+						no_gainer = false;
+						if (arr[i] > arr[h]) h = i;
+					}
+				}
+				if (no_gainer || no_loser) return [-1, -1];
+				else return [h, l];
+			}
+			function getHiLo2(arr) {
+				var l = -1, h = 0, no_gainer = true, no_loser = true;
+				for (var i = 0; i < arr.length; ++i) {
+					if (arr[i] < 0) {
+						no_loser = false;
+						if (arr[i] > arr[l] || l === -1) l = i;
+					}
+					if (arr[i] > 0) {
+						no_gainer = false;
+						if (arr[i] > arr[h]) h = i;
+					}
+				}
+				if (no_gainer || no_loser) return [-1, -1];
+				else return [h, l];
 			}
 			function reeval() {
 				var personRows = document.getElementsByClassName("person_row");
@@ -172,10 +234,16 @@
 				}
 
 				averageExpense = totalExpenses / personRows.length;
+				var accounts = [];
+				var names = [];
+				var payMatrix = [];
 
 				for (var i = 0; i < personRows.length; ++i) {
 					personRows[i].children[4].innerHTML = individualExpenses[i];
 					var toget = round2(individualExpenses[i] - averageExpense);
+					accounts.push (toget);
+					names.push (document.getElementsByClassName("name_input")[i].value);
+
 					var togetSpan = document.createElement ("span");
 					if (toget > 0) {
 						togetSpan.setAttribute ("class", "to_get good");
@@ -194,6 +262,32 @@
 					personRows[i].children[5].innerHTML = "";
 					personRows[i].children[5].appendChild(togetSpan);
 				}
+				for (var i = 0; i < accounts.length; ++i) {
+					payMatrix.push([]);
+					for (var j = 0; j < accounts.length; ++j) {
+						payMatrix[i][j] = 0;
+					}
+				}
+				while(true) {
+					var HiLo;
+					if (document.getElementById("split_algorithm").checked) HiLo = getHiLo (accounts);
+					else HiLo = getHiLo2 (accounts);
+					var recipient = HiLo[0], payer = HiLo[1];
+
+					if (recipient === -1 || payer === -1) break;
+
+					if (-accounts[payer] < accounts[recipient]) {
+						payMatrix[payer][recipient] += -accounts[payer];
+						accounts[recipient] += accounts[payer];
+						accounts[payer] = 0;
+					}
+					else {
+						payMatrix[payer][recipient] += accounts[recipient];
+						accounts[payer] += accounts[recipient];
+						accounts[recipient] = 0;
+					}
+				}
+				buildPayTable(payMatrix, names);
 			}
 		</script>
 	</body>
