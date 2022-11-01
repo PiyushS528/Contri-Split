@@ -40,6 +40,9 @@
 			.bad {
 				color: #ff7f7f;
 			}
+			.highlighted {
+				color: #7fffff;
+			}
 
 			#add_person_container {
 				border: 1px solid #ffffff;
@@ -57,7 +60,7 @@
 		<br>
 		<div id="container">
 			<table id="person_list" cellspacing="0">
-				<tr id="heading">
+				<tr id="person_list_heading">
 					<th> </th>
 					<th> No. </th>
 					<th> Name </th>
@@ -67,7 +70,7 @@
 				</tr>
 			</table>
 			<div id="add_person_container">
-				<button id="add_person" class="add_remove_button" onclick="addPerson()"> &plus; </button>
+				<button id="add_person" class="add_remove_button" onclick="addPerson()"> + </button>
 			</div>
 			<br><br>
 			Who pays who:
@@ -114,7 +117,7 @@
 				var addButton = document.createElement ("button");
 				addButton.setAttribute ("class", "add_remove_button remove_expense_button");
 				addButton.setAttribute ("onclick", "addNewExpense(this)");
-				addButton.innerHTML = "&plus;";
+				addButton.appendChild(document.createTextNode("+"));
 				cell.appendChild(addButton);
 
 				addNewExpense(addButton, true);
@@ -173,11 +176,25 @@
 
 						var newRow = document.createElement("tr");
 						var nameCell = document.createElement("td");
-						nameCell.innerHTML = names[i] + " to " + names[j];
+
+						var fromPerson = document.createElement("span");
+						fromPerson.setAttribute("class", "bad");
+						fromPerson.appendChild(document.createTextNode(names[i]));
+						var toPerson = document.createElement("span");
+						toPerson.setAttribute("class", "good");
+						toPerson.appendChild(document.createTextNode(names[j]));
+
+						nameCell.appendChild(fromPerson);
+						nameCell.appendChild(document.createTextNode(" to "));
+						nameCell.appendChild(toPerson);
+
 						newRow.appendChild(nameCell);
 
 						var amount = document.createElement("td");
-						amount.innerHTML = round2(matrix[i][j]);
+						var amountNode = document.createElement("span");
+						amountNode.setAttribute("class", "highlighted");
+						amountNode.innerHTML = round2(matrix[i][j]);
+						amount.appendChild(amountNode);
 						newRow.appendChild(amount);
 
 						paytable.appendChild (newRow);
@@ -247,7 +264,7 @@
 					var togetSpan = document.createElement ("span");
 					if (toget > 0) {
 						togetSpan.setAttribute ("class", "to_get good");
-						togetSpan.innerHTML = "&plus;" + toget;
+						togetSpan.innerHTML = "+" + toget;
 					}
 					else if (toget < 0) {
 						togetSpan.setAttribute ("class", "to_get bad");
@@ -255,7 +272,7 @@
 					}
 					else {
 						togetSpan.setAttribute ("class", "to_get neutral");
-						togetSpan.innerHTML = toget;
+						togetSpan.innerHTML = 0;
 					}
 					
 
